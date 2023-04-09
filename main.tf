@@ -3,6 +3,9 @@ terraform {
     http = {
       source = "hashicorp/http"
     }
+    external = {
+      source = "hashicorp/external"
+    }
   }
 }
 
@@ -20,21 +23,12 @@ data "http" "remote_template" {
   url = var.template_url
 }
 
-locals {
-  remote_template_content = data.http.remote_template.response_body
-}
-
-resource "local_file" "temp_remote_template" {
-  content  = local.remote_template_content
-  filename = "${path.module}/temp_remote_template.tmpl"
-}
-
-locals {
-  rendered_content         = templatefile("${path.module}/temp_remote_template.tmpl", var.template_variables)
-  cleaned_template_content = replace(local.remote_template_content, "/(<!-- VARIABLES[\\s\\S]*?-->)/", "")
+data "external" "replace_variables" {
+  program = ["bash", "${path.module}/replace_variables.sh", "${jsonencode(data.http.remote_template.response_body)}", "${jsonencode(var.template_variables)}"]
 }
 
 output "rendered" {
-  value      = local.cleaned_template_content
-  depends_on = [local_file.temp_remote_template]
+  value = replace(data.external.replace_variables.result["content"], "/(<!-- VARIABLES[\\s\\S]*?-->)/", "")
+
+  depends_on = [data.external.replace_variables]
 }
