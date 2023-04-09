@@ -21,7 +21,7 @@ data "http" "remote_template" {
 }
 
 locals {
-  remote_template_content = data.http.remote_template.body
+  remote_template_content = data.http.remote_template.response_body
 }
 
 resource "local_file" "temp_remote_template" {
